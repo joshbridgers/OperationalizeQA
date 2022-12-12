@@ -362,7 +362,7 @@ egrep "[XY]:" <SAMPLE_NAME>.DepthOfCoverage | sed 's/:/,/' | awk -F',' '{if ($1 
     > ${RESULTS_DIR}/${LIBRARY_ID}.SexMatch
 
 ##############################################################################
- Run Variant-Based QC
+# Run Variant-Based QC
 ##############################################################################
 
 # SNV/INDEL ratio
