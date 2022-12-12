@@ -1,20 +1,31 @@
 !/bin/bash
 
-set -eu
+##############################################################################
+# WARNING
+##############################################################################
+# Example implementation of parsing for key QC metrics from common 
+# bioinformatics pipeline on human cancer samples 
+# 
+# These scripts are NOT directly intended for clinical use. All code will need
+# to be validated for use in a clinical setting.
+
 
 ##############################################################################
 # Setup
 ##############################################################################
 
-# change to 'hg38' or 'hg19'
-REFERENCE_VERSION=hg38
-FLOWCELL_ID=MiSeqDemo
-FLOWCELL_ID=HW5YNDSX3
-DATA_DIR=data
-LOG_DIR=logs
-RESULTS_DIR=results
-LIBRARY_ID=SRR1518133
+set -eu
 
+DATA_DIR=data
+#FLOWCELL_ID=MiSeqDemo 
+FLOWCELL_ID=HW5YNDSX3
+LIBRARY_ID=SRR1518133
+LOG_DIR=logs
+REFERENCE_VERSION=hg19
+#REFERENCE_VERSION=hg38
+RESULTS_DIR=results
+
+# Thresholds
 PerBasePassPhred_PHRED_GTE_CUTOFF=30
 OnTargetCovGTPercent_PHRED_GT_CUTOFF=29
 
@@ -34,20 +45,29 @@ wget -o ${LOG_DIR}/fastq_wget.log \
 # Download Human Reference  
 ##############################################################################
 
-# These references are not intended to be used in production and for educational
-# use only
+# These references are not intended to be used in production and for 
+# educational use only
 
-# UCSD hg19 genome does NOT have the rCRS version of the mitochondria
-hg19_ftp=https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+# hg19
+# The UCSD hg19 genome does NOT have the rCRS version of the mitochondria which 
+# corrects several errors. 
+# Source: "Reanalysis and revision of the Cambridge reference sequence for 
+#   human mitochondrial DNA" ,https://doi.org/10.1038/13779, Accessed 
+#   2022-12-12
 
+# hg38
 # It is recommend to mask erronous duplications in this reference genome.
 # Source: "Failure to Detect Mutations in U2AF1 due to Changes in the GRCh38 
-# Reference Sequence", https://doi.org/10.1016/j.jmoldx.2021.10.013
-hg38_ftp=https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
+#   Reference Sequence", https://doi.org/10.1016/j.jmoldx.2021.10.013. Accessed 
+#   2022-12-12
+
+reference_ftp=https://hgdownload.soe.ucsc.edu/goldenPath/${REFERENCE_VERSION}/bigZips/${REFERENCE_VERSION}.fa.gz
 
 wget -o ${LOG_DIR}/reference_genome.log \
     -P ${DATA_DIR} \
-    $hg19_ftp $hg38_ftp
+    ${reference_ftp} 
+
+# TODO update to be build aware
 
 wget -o ${LOG_DIR}/snpeff_database_wget.log \
     -P ${DATA_DIR} \
@@ -186,12 +206,12 @@ grep "Total" ${RESULTS_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
 # are skipped
 
 # Build bwa index of the reference
-bwa index ${DATA_DIR}/hg19.fa.gz
+bwa index ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz
 
 # Build index of the reference
-samtools faidx ${DATA_DIR}/hg19.fa.gz
+samtools faidx ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz
 
-bwa mem ${DATA_DIR}/hg19.fa.gz \
+bwa mem ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz \
     ${DATA_DIR}/${LIBRARY_ID}*_1.fastq.gz \
     ${DATA_DIR}/${LIBRARY_ID}*_2.fastq.gz \
     > ${DATA_DIR}/${LIBRARY_ID}.bam
@@ -220,7 +240,7 @@ samtools mpileup \
     -BA \
     -d 500000 \
     -q 1 \
-    -f ${DATA_DIR}/hg19.fa.gz \
+    -f ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz \
     -l ${DATA_DIR}/20130108.exome.targets.bed \
     ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
     > ${DATA_DIR}/${LIBRARY_ID}.mpileup
@@ -229,7 +249,7 @@ varscan \
     mpileup2cns \
     ${DATA_DIR}/${LIBRARY_ID}.mpileup \
     --min-var-freq 0.01 \
-    --p-value 0.01 \
+    --p-value 0.05 \
     --strand-filter 0 \
     --output-vcf \
     --variants \
@@ -255,12 +275,12 @@ wget -o ${LOG_DIR}/target_bed_wget.log \
 
 # Create Dictionary file
 picard CreateSequenceDictionary \
-    -R ${DATA_DIR}/hg19.fa.gz
+    -R ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz
 
 # Create interval file
 picard BedToIntervalList \
     I=${DATA_DIR}/20130108.exome.targets.bed \
-    SD=${DATA_DIR}/hg19.dict \
+    SD=${DATA_DIR}/${REFERENCE_VERSION}.dict \
     O=${DATA_DIR}/20130108.exome.targets.interval_list
 
 ##############################################################################
@@ -287,7 +307,7 @@ grep -A 2 "## METRICS CLASS" \
 ##############################################################################
 
 gatk DepthOfCoverage \
-    -R ${DATA_DIR}/hg19.fa.gz \
+    -R ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz \
     -O ${DATA_DIR}/${LIBRARY_ID}.DepthOfCoverage \
     -I ${DATA_DIR}/${LIBRARY_ID}.sort.bam \
     -L ${DATA_DIR}/20130108.exome.targets.interval_list \
