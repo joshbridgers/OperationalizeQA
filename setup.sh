@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 
 ##############################################################################
 # WARNING
@@ -6,54 +6,68 @@
 # Example implementation of parsing for key QC metrics from common 
 # bioinformatics pipeline on human cancer samples 
 # 
-# These scripts are NOT directly intended for clinical use. All code will need
-# to be validated for use in a clinical setting.
+# These scripts are NOT directly intended for clinical use. All production code
+# will need to be validated for use in a clinical setting. 
 
 
 ##############################################################################
 # Setup
 ##############################################################################
 
-set -eu
+# "strict" mode
+# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425
+set -euxo pipefail
 
 DATA_DIR=data
-#FLOWCELL_ID=MiSeqDemo 
-FLOWCELL_ID=HW5YNDSX3
+FLOWCELL_ID=MiSeqDemo 
+#FLOWCELL_ID=HW5YNDSX3
 LIBRARY_ID=SRR1518133
 LOG_DIR=logs
-REFERENCE_VERSION=hg19
-#REFERENCE_VERSION=hg38
 RESULTS_DIR=results
 
 # Thresholds
 PerBasePassPhred_PHRED_GTE_CUTOFF=30
 OnTargetCovGTPercent_PHRED_GT_CUTOFF=29
 
-mkdir -v ${DATA_DIR} ${LOG_DIR} ${RESULTS_DIR}
+# Download locations
+FASTQ_1_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_1.fastq.gz
+FASTQ_2_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_2.fastq.gz
+GATK3_8_LOC=https://storage.googleapis.com/gatk-software/package-archive/gatk/GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2
+INTEROP_LOC=https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
+MINICONDA_LOC=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+REFERENCE_LOC=ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz
+REFERENCE_INDEX_LOC=https://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.fai
+REFERENCE_FILE_SUFFIX=$(echo ${REFERENCE_LOC} | rev | cut -f1 -d/ | rev | sed 's/\.fasta\.gz$//')
+SNPEFF_DATABASE_LOC=https://snpeff.blob.core.windows.net/databases/v5_0/snpEff_v5_0_GRCh37.75.zip
+TARGET_BED_LOC=ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/exome_pull_down_targets/20130108.exome.targets.bed 
+TARGET_BED_SUFFIX=$(echo ${TARGET_BED_LOC} | rev | cut -f1 -d/ | rev | sed 's/\.bed//')
+
+# TODO review to keep
+REFERENCE_BWA_INDEX_LOC=http://hgdownload.cse.ucsc.edu/goldenpath/hg19/bigZips/analysisSet/hg19.p13.plusMT.no_alt_analysis_set.bwa_index.tar.gz
+REFERENCE_BWA_INDEX_FILE=$(echo ${REFERENCE_BWA_INDEX_LOC} | rev | cut -f1 -d/ | rev)
+
+# Functions
+function wget_func () { 
+    wget \
+        -P ${DATA_DIR} \
+        $1 2>&1 | tee -a ${LOG_DIR}/${2}_wget.log
+}
+
+mkdir -vp ${DATA_DIR} ${LOG_DIR} ${RESULTS_DIR}
 
 ##############################################################################
-# Download FASTQ
-# Exome of NA12878 (https://www.ncbi.nlm.nih.gov/sra/?term=SRR1518133)
+# Downloads   
 ##############################################################################
 
-wget -o ${LOG_DIR}/fastq_wget.log \
-    -P ${DATA_DIR} \
-    ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_1.fastq.gz \
-    ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_2.fastq.gz \
-
-##############################################################################
-# Download Human Reference  
+# Download human reference and index
 ##############################################################################
 
 # These references are not intended to be used in production and for 
 # educational use only
 
-# hg19
-# The UCSD hg19 genome does NOT have the rCRS version of the mitochondria which 
-# corrects several errors. 
-# Source: "Reanalysis and revision of the Cambridge reference sequence for 
-#   human mitochondrial DNA" ,https://doi.org/10.1038/13779, Accessed 
-#   2022-12-12
+# GRCh37 
+# A no-alt version was used. This reference does not include decoy sequence
+# hs37d5.  
 
 # hg38
 # It is recommend to mask erronous duplications in this reference genome.
@@ -61,42 +75,66 @@ wget -o ${LOG_DIR}/fastq_wget.log \
 #   Reference Sequence", https://doi.org/10.1016/j.jmoldx.2021.10.013. Accessed 
 #   2022-12-12
 
-reference_ftp=https://hgdownload.soe.ucsc.edu/goldenPath/${REFERENCE_VERSION}/bigZips/${REFERENCE_VERSION}.fa.gz
+wget_func ${REFERENCE_LOC} "reference"
+wget_func ${REFERENCE_INDEX_LOC} "reference_index"
 
-wget -o ${LOG_DIR}/reference_genome.log \
-    -P ${DATA_DIR} \
-    ${reference_ftp} 
+# TODO review if keeping pregenerated fastq
+wget_func ${REFERENCE_BWA_INDEX_LOC} "bwa_index"
+gunzip ${DATA_DIR}/${REFERENCE_BWA_INDEX_FILE}
 
-# TODO update to be build aware
-
-wget -o ${LOG_DIR}/snpeff_database_wget.log \
-    -P ${DATA_DIR} \
-    https://snpeff.blob.core.windows.net/databases/v5_0/snpEff_v5_0_GRCh37.75.zip
-
+# Download FASTQ
 ##############################################################################
-# Download and extract example Illumina SAV files
-##############################################################################
+# Exome of NA12878 (https://www.ncbi.nlm.nih.gov/sra/?term=SRR1518133)
+wget_func $FASTQ_1_LOC "fastq_1"
+wget_func $FASTQ_2_LOC "fastq_2"
 
+# Download snpeff annotation database
+##############################################################################
+wget_func ${SNPEFF_DATABASE_LOC} "snpeff_database"
+
+# Downloads and extract example Illumina SAV files
+##############################################################################
 # Example from Illumina's InterOp github
 # https://github.com/Illumina/interop/blob/master/docs/src/example_sav_analysis.md
-wget -o ${LOG_DIR}/interop_wget.log \
-    -P ${DATA_DIR} \
-    https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
+wget_func ${INTEROP_LOC} "interop"
 
-md5sum -c data.md5
 unzip ${DATA_DIR}/MiSeqDemo.zip -d data
+
+# Download bed used by example exome
+##############################################################################
+wget_func ${TARGET_BED_LOC} "exome_bed"
+perl -pi -e 's/^chr//' ${DATA_DIR}/${TARGET_BED_SUFFIX}.bed
+
+# Download conda
+##############################################################################
+wget_func ${MINICONDA_LOC} "miniconda"
+
+# Check downloads
+##############################################################################
+md5sum -c data.md5
+
+# Trim Reference Genome
+##############################################################################
+# truncating needed due to the following error from samtools
+# [E::bgzf_read_init] Cannot decompress legacy RAZF format
+# [E::razf_info] To decompress this file, use the following commands:
+#    truncate -s 891946027 data/human_g1k_v37.fasta.gz
+#        gunzip data/human_g1k_v37.fasta.gz
+#        The resulting uncompressed file should be 3153506519 bytes in length.
+#        If you do not have a truncate command, skip that step (though gunzip will
+#        likely produce a "trailing garbage ignored" message, which can be ignored).
+
+truncate -s 891946027 ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta.gz
+gunzip ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta.gz
 
 ##############################################################################
 # Install conda
 ##############################################################################
-
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh -b
+bash ${DATA_DIR}/Miniconda3-latest-Linux-x86_64.sh -b
 
 ##############################################################################
 # Create conda environment and add programs
 ##############################################################################
-
 conda init bash
 # Shell might need to be restarted after init
 conda create --name OperationalizeQA
@@ -108,18 +146,23 @@ conda install -c bioconda -y \
     bamutil fastqc illumina-interop gatk4 hmftools-purple multiqc picard \
     qualimap samtools snpeff
 
+##############################################################################
+# Alternative GATK3 install
+##############################################################################
+wget_func ${GATK3_8_LOC} "gatk3.8"
+GATK3_8_LOC=$(echo ${GATK3_8_LOC} | rev | cut -d/ -f1 | rev)
+bunzip ${GATK_NAME} 
+tar xfv ${GATK_NAME} 
 
 ##############################################################################
 # Example aligner and variant caller install
 ##############################################################################
-
 conda install -c bioconda -y \
     bwa minimap2 varscan
 
 ##############################################################################
 # Install chronQC
 ##############################################################################
-
 git clone https://github.com/nilesh-tawari/ChronQC.git
 cd ChronQC
 pip install -r requirements.txt
@@ -154,19 +197,22 @@ grep "^[0-9]" ${RESULTS_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
     sed 's/ //g' |\
     sort -u |\
     head -1 |\
-    awk -F',' -v RESULTS_DIR="$RESULTS_DIR" -v FLOWCELL_ID="$FLOWCELL_ID" '{print $2 > RESULTS_DIR"/"FLOWCELL_ID"_lane_"$1".ClustDen"}'
+    awk -F',' -v RESULTS_DIR="$RESULTS_DIR" \
+        -v FLOWCELL_ID="$FLOWCELL_ID" '
+        {
+            print $2 > RESULTS_DIR"/"FLOWCELL_ID"_lane_"$1".ClustDen"
+        }'
 
 # Flowcell average cluster density
 # dumptext depreciated in recent interop update
-head –n -2 ${RESULTS_DIR}/${FLOWCELL_ID}_interop_dumptext.txt |\
-    sed -n -e '/Lane/,$p' |\
-    tail -n +2 |\
-    awk -F',' '{sum+=$6} END {print sum/NR}' \
-    > ${RESULTS_DIR}/${FLOWCELL_ID}.cluster_density
+#head –n -2 ${RESULTS_DIR}/${FLOWCELL_ID}_interop_dumptext.txt |\
+#    sed -n -e '/Lane/,$p' |\
+#    tail -n +2 |\
+#    awk -F',' '{sum+=$6} END {print sum/NR}' \
+#    > ${RESULTS_DIR}/${FLOWCELL_ID}.cluster_density
 
 # Number of reads passing a minimum Phred score criteron
 ##############################################################################
-
 sed -n '/Level/,/^$/p' ${RESULTS_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
     head -n -1 |\
     awk -F',' '{print $7}' |\
@@ -175,7 +221,6 @@ sed -n '/Level/,/^$/p' ${RESULTS_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
 
 # Percent of bases higher than the minimum Phred score of all bases called
 ##############################################################################
-
 # Parses from Illumina's interop summary which uses a minimum Phred score of 
 # >=30
 egrep ^[0-9]*,[0-9]*\.[0-9]*,1 \
@@ -201,47 +246,45 @@ grep "Total" ${RESULTS_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
 ##############################################################################
 # Run Example Alignment
 ##############################################################################
-
 # For the sake of runtime and brevity steps like BQSR and Indel realignment 
 # are skipped
 
-# Build bwa index of the reference
-bwa index ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz
+ Build bwa index of the reference
+bwa index ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta
 
-# Build index of the reference
-samtools faidx ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz
-
-bwa mem ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz \
+bwa mem ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta \
+    -R "@RG\tID:${LIBRARY_ID}\tPL:illumina\tPU:${LIBRARY_ID}\tSM:${LIBRARY_ID}" \
     ${DATA_DIR}/${LIBRARY_ID}*_1.fastq.gz \
     ${DATA_DIR}/${LIBRARY_ID}*_2.fastq.gz \
     > ${DATA_DIR}/${LIBRARY_ID}.bam
 
-samtools sort ${DATA_DIR}/${LIBRARY_ID}.sort.bam
+samtools sort ${DATA_DIR}/${LIBRARY_ID}.bam \
+    -o ${DATA_DIR}/${LIBRARY_ID}.sort.bam
 rm ${DATA_DIR}/${LIBRARY_ID}.bam
-samtools index ${DATA_DIR}/${LIBRARY_ID}.sort.bam
 
 samtools view \
     -h \
-    -L ${DATA_DIR}/20130108.exome.targets.bed \
-    ${DATA_DIR}/${LIBRARY_ID}.bam \
+    -L ${DATA_DIR}/${TARGET_BED_SUFFIX}.bed \
+    ${DATA_DIR}/${LIBRARY_ID}.sort.bam \
     > ${DATA_DIR}/${LIBRARY_ID}.on_target.bam
+rm ${DATA_DIR}/${LIBRARY_ID}.sort.bam
 
 picard \
     MarkDuplicates \
-    -I ${DATA_DIR}/${LIBRARY_ID}.sort.bam \
+    -I ${DATA_DIR}/${LIBRARY_ID}.on_target.bam \
     -O ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
     -M ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.txt
+samtools index ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam
 
 ##############################################################################
 # Run example variant calling and annotation
 ##############################################################################
-
 samtools mpileup \
     -BA \
     -d 500000 \
     -q 1 \
-    -f ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz \
-    -l ${DATA_DIR}/20130108.exome.targets.bed \
+    -f ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta \
+    -l ${DATA_DIR}/${TARGET_BED_SUFFIX}.bed \
     ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
     > ${DATA_DIR}/${LIBRARY_ID}.mpileup
 
@@ -268,20 +311,15 @@ snpEff \
 ##############################################################################
 # Build interval file 
 ##############################################################################
-
-wget -o ${LOG_DIR}/target_bed_wget.log \
-    -P ${DATA_DIR} \
-    ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/exome_pull_down_targets/20130108.exome.targets.bed 
-
 # Create Dictionary file
 picard CreateSequenceDictionary \
-    -R ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz
+    -R ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta
 
 # Create interval file
 picard BedToIntervalList \
-    I=${DATA_DIR}/20130108.exome.targets.bed \
-    SD=${DATA_DIR}/${REFERENCE_VERSION}.dict \
-    O=${DATA_DIR}/20130108.exome.targets.interval_list
+    I=${DATA_DIR}/${TARGET_BED_SUFFIX}.bed \
+    SD=${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.dict \
+    O=${DATA_DIR}/${TARGET_BED_SUFFIX}.interval_list
 
 ##############################################################################
 # Run Alignment-Based QC
@@ -289,13 +327,12 @@ picard BedToIntervalList \
 
 # Mean on-target coverage of reads
 ##############################################################################
-
 picard \
     CollectHsMetrics \
-    INPUT=${DATA_DIR}/${LIBRARY_ID}.sort.bam \
+    INPUT=${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
     OUTPUT=${DATA_DIR}/${LIBRARY_ID}.CollectHsMetrics.txt \
-    BAIT_INTERVALS=${DATA_DIR}/20130108.exome.targets.interval_list \
-    TARGET_INTERVALS=${DATA_DIR}/20130108.exome.targets.interval_list
+    BAIT_INTERVALS=${DATA_DIR}/${TARGET_BED_SUFFIX}.interval_list \
+    TARGET_INTERVALS=${DATA_DIR}/${TARGET_BED_SUFFIX}.interval_list
 
 grep -A 2 "## METRICS CLASS" \
     ${DATA_DIR}/${LIBRARY_ID}.CollectHsMetrics.txt |\
@@ -305,22 +342,18 @@ grep -A 2 "## METRICS CLASS" \
 
 # Percent of targeted bases with coverage greater than a specified minimum
 ##############################################################################
-
 gatk DepthOfCoverage \
-    -R ${DATA_DIR}/${REFERENCE_VERSION}.fa.gz \
+    -R ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta \
     -O ${DATA_DIR}/${LIBRARY_ID}.DepthOfCoverage \
-    -I ${DATA_DIR}/${LIBRARY_ID}.sort.bam \
-    -L ${DATA_DIR}/20130108.exome.targets.interval_list \
+    -I ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
+    -L ${DATA_DIR}/${TARGET_BED_SUFFIX}.interval_list \
     --summary-coverage-threshold ${OnTargetCovGTPercent_PHRED_GT_CUTOFF}
 
 cut -d, -f7 ${DATA_DIR}/${LIBRARY_ID}.DepthOfCoverage.sample_summary \
     > ${RESULTS_DIR}/${LIBRARY_ID}.OnTargetCovGTPercent 
 
-# TODO: Fix depth of coverage crash!
-
 #Percent of bases exceeding the minimum Phred score mapped on target
 ##############################################################################
-
 bam stats \
     --in ${DATA_DIR}/${LIBRARY_ID}.on_target.bam \
     --phred \
@@ -340,10 +373,9 @@ grep ^[0-9] ${DATA_DIR}/${LIBRARY_ID}.bamutil_stats_on_target.txt |\
 
 # AT/GC bias
 ##############################################################################
-
 qualimap \
     bamqc \
-    -bam ${DATA_DIR}/${LIBRARY_ID}.sort.bam
+    -bam ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam
 
 grep "GC percentage" ${DATA_DIR}/${LIBRARY_ID}.sort_stats/genome_results.txt \
     -m1 |\
@@ -353,9 +385,8 @@ grep "GC percentage" ${DATA_DIR}/${LIBRARY_ID}.sort_stats/genome_results.txt \
 
 # Median insert size (bp)
 ##############################################################################
-
 picard CollectInsertSizeMetrics \
-    -I ${DATA_DIR}/${LIBRARY_ID}.sort.bam \
+    -I ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
     -O ${DATA_DIR}/${LIBRARY_ID}.CollectInsertSizeMetrics.txt \
     -H ${DATA_DIR}/${LIBRARY_ID}.CollectInsertSizeMetrics.pdf \
 
@@ -367,7 +398,6 @@ grep -A2 '## METRICS CLASS' \
 
 # Percent duplicates
 ##############################################################################
-
 grep -A2  "## METRICS CLASS" \
     ${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.txt |\
     cut -f9 |\
@@ -376,9 +406,22 @@ grep -A2  "## METRICS CLASS" \
 
 # Observed sex matches reported sex
 ##############################################################################
-
-egrep "[XY]:" <SAMPLE_NAME>.DepthOfCoverage | sed 's/:/,/' | awk -F',' '{if ($1 ~ /X$/) {X_sum+=4 ; X_count+=1} else {Y_sum+=4 ; Y_count+=1}} END {print "("X_sum"/"X_count")/("Y_sum"/"Y_count")"}' | bc -l
-
+egrep "[XY]:" <SAMPLE_NAME>.DepthOfCoverage |\
+    sed 's/:/,/' |\
+    awk -F',' '
+        {
+            if ($1 ~ /X$/) {
+                X_sum+=4 ; X_count+=1
+            } 
+            else {
+                Y_sum+=4 ; Y_count+=1
+            }
+        } 
+            END \
+        {
+            print "("X_sum"/"X_count")/("Y_sum"/"Y_count")"
+        }' |\ 
+    bc -l \
     > ${RESULTS_DIR}/${LIBRARY_ID}.SexMatch
 
 ##############################################################################
@@ -387,7 +430,6 @@ egrep "[XY]:" <SAMPLE_NAME>.DepthOfCoverage | sed 's/:/,/' | awk -F',' '{if ($1 
 
 # SNV/INDEL ratio
 ##############################################################################
-
 grep "^SNP ," ${DATA_DIR}/${LIBRARY_ID}.effects-stats.csv |\
     cut -d, -f3 |\
     sed 's/[ %]//g' \
@@ -395,7 +437,6 @@ grep "^SNP ," ${DATA_DIR}/${LIBRARY_ID}.effects-stats.csv |\
 
 # Ti/TV ratio
 ##############################################################################
-
 grep "^Ts_Tv_ratio" ${DATA_DIR}/${LIBRARY_ID}.effects-stats.csv  |\
     cut -d, -f2 |\ 
     sed 's/[ %]//g' \ 
