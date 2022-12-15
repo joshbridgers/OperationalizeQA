@@ -3,21 +3,40 @@
 # bioinformatics pipeline on human cancer samples 
 #
 ################################################################################
-# WARNING
+# WARNINGS and LIMITATIONS
 ################################################################################
-# LIMITATIONS
 #
-# Commands are parsing text output and can break if the format changes. 
-# Commands have not been tuned for multiple cores and operated under default
-# behaviors. These scripts are NOT directly intended for clinical use. All 
+# Commands have not been tuned for multiple cores or balanced in a high 
+# computing environment. Programs will operated under default behaviors which 
+# may be suboptimal for said environments. 
+
+# These scripts are NOT directly intended for clinical use. All 
 # production code will need to be validated for use in a clinical setting. 
 #
+# The downloaded reference is not intended to be used in production and for 
+# educational use only
+#
+# The provided commands are parsing text output and can break if the outputted 
+# format changes. For example, given the constant evolution of the Illumina 
+# platform and InterOps output there can be different outputs from the interop 
+# program that range from formating to nuanced differences such as per flowcell
+# surface cluster densities as highlighted below.
+
+# Although the conda 
+# command will grab the latest version of the inputted program, this example 
+# covers parsing for v1.2.0 release and scripts may have to be adapted for older 
+# versions of the InterOp folder or program output.
 ################################################################################
 
 # "strict" mode
 # https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425
 set -euxo pipefail
 
+################################################################################
+# Setup
+################################################################################
+
+# Directory locations
 DATA_DIR=data
 FLOWCELL_ID=MiSeqDemo 
 LIBRARY_ID=SRR1518133
@@ -39,18 +58,16 @@ SNPEFF_DATABASE_LOC=https://snpeff.blob.core.windows.net/databases/v5_0/snpEff_v
 TARGET_BED_LOC=ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/exome_pull_down_targets/20130108.exome.targets.bed 
 TARGET_BED_SUFFIX=$(basename ${TARGET_BED_LOC} | sed 's/\.bed//')
 
-# TODO review to keep
-REFERENCE_BWA_INDEX_LOC=http://hgdownload.cse.ucsc.edu/goldenpath/hg19/bigZips/analysisSet/hg19.p13.plusMT.no_alt_analysis_set.bwa_index.tar.gz
-REFERENCE_BWA_INDEX_FILE=$(basename ${REFERENCE_BWA_INDEX_LOC})
+mkdir -vp ${DATA_DIR} ${LOG_DIR} ${RESULTS_DIR}
 
+################################################################################
 # Functions
+################################################################################
 function wget_func () { 
     wget \
         -P ${DATA_DIR} \
         $1 2>&1 | tee -a ${LOG_DIR}/${2}_wget.log
 }
-
-mkdir -vp ${DATA_DIR} ${LOG_DIR} ${RESULTS_DIR}
 
 ################################################################################
 # Downloads   
@@ -58,10 +75,6 @@ mkdir -vp ${DATA_DIR} ${LOG_DIR} ${RESULTS_DIR}
 
 # Download human reference and index
 ################################################################################
-
-# These reference are not intended to be used in production and for 
-# educational use only
-
 # GRCh37 
 # A no-alt version was used. This reference does not include decoy sequence
 # hs37d5.  
@@ -199,7 +212,6 @@ grep "Total" ${DATA_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
 
 bwa index ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta
 bwa mem \
-    -t4 \
     ${DATA_DIR}/${REFERENCE_FILE_SUFFIX}.fasta \
     -R "@RG\tID:${LIBRARY_ID}\tPL:illumina\tPU:${LIBRARY_ID}\tSM:${LIBRARY_ID}" \
     ${DATA_DIR}/${LIBRARY_ID}*_1.fastq.gz \
