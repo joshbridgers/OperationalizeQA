@@ -15,7 +15,7 @@ bioinformatics pipeline on human cancer samples.
 ### Table 1. Summary of run-level metrics with related bioinformatics software and modules for generation
 
 |Metric|Tool and Module|
-|---|---|---|
+|---|---|
 |Cluster density|**InterOp** dumptext|
 |Number of reads passing a minimum Phred score criterion|**InterOp** summary|
 |Percent of bases higher than the minimum Phred score of all bases called|**InterOp** plot_qscore_histogram|
