@@ -16,7 +16,7 @@ bioinformatics pipeline on human cancer samples.
 
 |Metric|Tool and Module|
 |---|---|
-|Cluster density|**InterOp** dumptext|
+|Cluster density|**InterOp** summary|
 |Number of reads passing a minimum Phred score criterion|**InterOp** summary|
 |Percent of bases higher than the minimum Phred score of all bases called|**InterOp** plot_qscore_histogram|
 |Demultiplexing success|**InterOp** index-summary|
@@ -31,10 +31,9 @@ bioinformatics pipeline on human cancer samples.
 |AT/GC bias|**Qualimap** bamqc|Yes|
 |Mean insert size (bp)|**Samtools** stats|Yes|
 |Percent PCR duplicates|**Picard** MarkDuplicates|Yes|
-|Observed sex matches reported sex|**Samtools** idxstats|Yes|
+|Observed sex matches reported sex|**GATK-4.X** DepthOfCoverage|Yes|
 |SNV/INDEL ratio|**SnpEff** csvStats|Yes|
 |Ti/Tv ratio|**SnpEff** csvStats|Yes|
-|Percent of nucleated cells that are tumor cells|**ichorCNA**|No|
 
 ## Warnings and Limitations
 Commands have not been tuned for multiple cores or balanced in a high 
