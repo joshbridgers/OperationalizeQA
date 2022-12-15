@@ -112,7 +112,7 @@ wget_func ${TARGET_BED_LOC} "exome_bed"
 
 # Perform checksum on downloads
 ################################################################################
-md5sum -c run_files.md5
+md5sum -c ${DATA_DIR}/run_files.md5
 
 # Remove "chr" from bed
 ################################################################################

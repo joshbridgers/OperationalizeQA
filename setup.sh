@@ -43,7 +43,7 @@ wget_func ${MINICONDA_LOC} "miniconda"
 
 # Perform checksum on downloads
 ################################################################################
-md5sum -c setup_files.md5
+md5sum -c ${DATA_DIR}/setup_files.md5
 
 # Install conda
 ################################################################################
