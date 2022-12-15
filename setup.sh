@@ -20,6 +20,8 @@ set -euxo pipefail
 # Setup
 ################################################################################
 DATA_DIR=data
+LOG_DIR=logs
+GATK3_8_LOC=https://storage.googleapis.com/gatk-software/package-archive/gatk/GenomeAnalysisTK-3.8-1-0-gf15c1c3ef.tar.bz2
 MINICONDA_LOC=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
 # Functions
@@ -29,7 +31,7 @@ function wget_func () {
         $1 2>&1 | tee -a ${LOG_DIR}/${2}_wget.log
 }
 
-mkdir -vp ${DATA_DIR}
+mkdir -vp ${DATA_DIR} ${LOG_DIR}
 
 ################################################################################
 # Setup   
@@ -49,9 +51,9 @@ bash ${DATA_DIR}/Miniconda3-latest-Linux-x86_64.sh -b
 
 # Create conda environment and add programs
 ################################################################################
+conda create --name OperationalizeQA
 conda init bash
 # Shell might need to be restarted after init
-conda create --name OperationalizeQA
 conda activate OperationalizeQA
 conda config --add channels defaults
 conda config --add channels bioconda
