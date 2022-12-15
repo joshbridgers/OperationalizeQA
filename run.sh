@@ -31,7 +31,7 @@ OnTargetCovGTPercent_PHRED_GT_CUTOFF=29
 # Download locations
 FASTQ_1_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_1.fastq.gz
 FASTQ_2_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_2.fastq.gz
-INTEROP_LOC=https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
+#INTEROP_LOC=https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
 REFERENCE_LOC=ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz
 REFERENCE_INDEX_LOC=https://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.fai
 REFERENCE_FILE_SUFFIX=$(basename ${REFERENCE_LOC} | sed 's/\.fasta\.gz$//')
@@ -89,8 +89,9 @@ wget_func ${SNPEFF_DATABASE_LOC} "snpeff_database"
 ################################################################################
 # Example from Illumina's InterOp 
 # https://github.com/Illumina/interop/blob/master/docs/src/example_sav_analysis.md
-wget_func ${INTEROP_LOC} "interop"
-unzip ${DATA_DIR}/MiSeqDemo.zip -d data
+# This interOp folder is already present in the git repo under the "data" folder
+#wget_func ${INTEROP_LOC} "interop"
+#unzip ${DATA_DIR}/MiSeqDemo.zip -d data
 
 # Download bed used by example exome
 ################################################################################
