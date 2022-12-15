@@ -1,9 +1,9 @@
-# H1 Operationalizing Quality Assurance for Clinical Illumina Somatic NGS Pipelines
+# Operationalizing Quality Assurance for Clinical Illumina Somatic NGS Pipelines
 
 Example implementation of parsing for key QC metrics from common 
 bioinformatics pipeline on human cancer samples 
 
-# H2 WARNINGS and LIMITATIONS
+## Warnings and Limitations
 ---
 Commands have not been tuned for multiple cores or balanced in a high 
 computing environment. Programs will operated under default behaviors which 
@@ -21,10 +21,6 @@ platform and InterOps output there can be different outputs from the interop
 program that range from formating to nuanced differences such as per flowcell
 surface cluster densities as highlighted below.
 
-Although the conda 
-command will grab the latest version of the inputted program, this example 
-covers parsing for v1.2.0 release and scripts may have to be adapted for older 
-versions of the InterOp folder or program output.
-
----
-
+Although the conda command will grab the latest version of the inputted program, 
+this example covers parsing for v1.2.0 release and scripts may have to be 
+adapted for older versions of the InterOp folder or program output.
