@@ -155,7 +155,8 @@ interop_plot_qscore_histogram \
 # head -1 used to get the top surface value.  Depending on the machine the 
 # cluster density might be reported as the same across all surfaces. This 
 # command will need to be adjusted if one wants to track per lane, per surface
-# cluster density
+# cluster density. Illumina reports the average cluster density and the 
+# standard deviations across all tiles for that lane.
 grep "^[0-9]" ${DATA_DIR}/${FLOWCELL_ID}_interop_summary.txt |\
     cut -d, -f1,4 |\
     sed 's/ //g' |\
