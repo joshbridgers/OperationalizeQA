@@ -1,7 +1,7 @@
 
 # Operationalizing Quality Assurance for Clinical Illumina Somatic NGS Pipelines
 
-Example implementation of parsing for key QC metrics from common 
+Example implementation of parsing for key QC metrics from a common 
 bioinformatics pipeline on human cancer samples.
 
 ## Quick Start
@@ -13,10 +13,11 @@ bioinformatics pipeline on human cancer samples.
 ## Documentation
   
 ### Table 1. Summary of run-level metrics with related bioinformatics software and modules for generation
+
 |Metric|Tool and Module|
 |---|---|---|
-|Cluster density | **InterOp** dumptext | 
-|Number of reads passing a minimum Phred score criterion| **InterOp** summary|
+|Cluster density|**InterOp** dumptext|
+|Number of reads passing a minimum Phred score criterion|**InterOp** summary|
 |Percent of bases higher than the minimum Phred score of all bases called|**InterOp** plot_qscore_histogram|
 |Demultiplexing success|**InterOp** index-summary|
 
