@@ -1,3 +1,4 @@
+
 # Operationalizing Quality Assurance for Clinical Illumina Somatic NGS Pipelines
 
 Example implementation of parsing for key QC metrics from common 
@@ -9,7 +10,32 @@ bioinformatics pipeline on human cancer samples.
 ##### Run example pipeline 
 ```./run.sh```
 
- ## Warnings and Limitations
+## Documentation
+  
+### Table 1. Summary of run-level metrics with related bioinformatics software and modules for generation
+|Metric|Tool and Module|
+|---|---|---|
+|Cluster density | **InterOp** dumptext | 
+|Number of reads passing a minimum Phred score criterion| **InterOp** summary|
+|Percent of bases higher than the minimum Phred score of all bases called|**InterOp** plot_qscore_histogram|
+|Demultiplexing success|**InterOp** index-summary|
+
+### Table 2. Summary of per-sample metrics with the related bioinformatics software and modules for generation
+
+|Metric|Tool and Module|bcbio|
+|---|---|---|
+|Mean on-target coverage of reads|**Picard** CollectHsMetrics|Yes|
+|Percent of targeted bases with coverage greater than a specified minimum|**GATK-4.X** DepthOfCoverage|No|
+|Percent of bases exceeding the minimum Phred score mapped on target|**BamUtil** stats|No|
+|AT/GC bias|**Qualimap** bamqc|Yes|
+|Mean insert size (bp)|**Samtools** stats|Yes|
+|Percent PCR duplicates|**Picard** MarkDuplicates|Yes|
+|Observed sex matches reported sex|**Samtools** idxstats|Yes|
+|SNV/INDEL ratio|**SnpEff** csvStats|Yes|
+|Ti/Tv ratio|**SnpEff** csvStats|Yes|
+|Percent of nucleated cells that are tumor cells|**ichorCNA**|No|
+
+## Warnings and Limitations
 Commands have not been tuned for multiple cores or balanced in a high 
 computing environment. Programs will operated under default behaviors which 
 may be sub-optimal for said environments. 
