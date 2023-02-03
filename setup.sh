@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # Example implementation of parsing for key QC metrics from common 
 # bioinformatics pipeline on human cancer samples 
 #
@@ -13,7 +14,6 @@
 # production code will need to be validated for use in a clinical setting. 
 
 # "strict" mode
-# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425
 set -euxo pipefail
 
 ################################################################################

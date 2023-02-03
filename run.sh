@@ -1,40 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # Example implementation of parsing for key QC metrics from common 
 # bioinformatics pipeline on human cancer samples 
 #
 ################################################################################
-# WARNINGS and LIMITATIONS
+# Warnings and Limitations
 ################################################################################
-#
-# Commands have not been tuned for multiple cores or balanced in a high 
-# computing environment. Programs will operated under default behaviors which 
-# may be suboptimal for said environments. 
-
-# These scripts are NOT directly intended for clinical use. All 
-# production code will need to be validated for use in a clinical setting. 
-#
-# The downloaded reference is not intended to be used in production and for 
-# educational use only
-#
-# The provided commands are parsing text output and can break if the outputted 
-# format changes. For example, given the constant evolution of the Illumina 
-# platform and InterOps output there can be different outputs from the interop 
-# program that range from formating to nuanced differences such as per flowcell
-# surface cluster densities as highlighted below.
-
-# Although the conda 
-# command will grab the latest version of the inputted program, this example 
-# covers parsing for v1.2.0 release and scripts may have to be adapted for older 
-# versions of the InterOp folder or program output.
-################################################################################
-
-# "strict" mode
-# https://gist.github.com/mohanpedala/1e2ff5661761d3abd0385e8223e16425
-set -euxo pipefail
+# See https://github.com/joshbridgers/OperationalizeQA#warnings-and-limitations
 
 ################################################################################
 # Setup
 ################################################################################
+
+# "strict" mode
+set -euxo pipefail
 
 # Directory locations
 DATA_DIR=data
@@ -50,7 +29,7 @@ OnTargetCovGTPercent_PHRED_GT_CUTOFF=29
 # Download locations
 FASTQ_1_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_1.fastq.gz
 FASTQ_2_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_2.fastq.gz
-#INTEROP_LOC=https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
+INTEROP_LOC=https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
 REFERENCE_LOC=ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz
 REFERENCE_INDEX_LOC=https://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.fai
 REFERENCE_FILE_SUFFIX=$(basename ${REFERENCE_LOC} | sed 's/\.fasta\.gz$//')
@@ -287,6 +266,8 @@ picard BedToIntervalList \
 
 # Mean on-target coverage of reads
 ################################################################################
+# Note a probe bed was not provided in this example so the target bed was reused
+# for the BAIT_INTERVALS
 picard \
     CollectHsMetrics \
     INPUT=${DATA_DIR}/${LIBRARY_ID}.MarkDuplicates.bam \
