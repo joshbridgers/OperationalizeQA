@@ -35,6 +35,8 @@ bioinformatics pipeline on human cancer samples.
 |Ti/Tv ratio|**SnpEff** csvStats|Yes|
 
 ## Warnings and Limitations
+All data used is publically available.
+
 Commands have not been optimal for multiple cores or balanced in a high 
 performance computing environment. Programs will operated under default 
 behaviors which may be sub-optimal for said environments. 
