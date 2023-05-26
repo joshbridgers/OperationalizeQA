@@ -27,6 +27,8 @@ PerBasePassPhred_PHRED_GTE_CUTOFF=30
 OnTargetCovGTPercent_PHRED_GT_CUTOFF=29
 
 # Download locations
+
+# Publically available human cell line NA12878
 FASTQ_1_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_1.fastq.gz
 FASTQ_2_LOC=ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR151/003/SRR1518133/SRR1518133_2.fastq.gz
 INTEROP_LOC=https://github.com/Illumina/interop/releases/download/v1.0.6/MiSeqDemo.zip
